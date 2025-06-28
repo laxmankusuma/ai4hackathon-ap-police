@@ -108,7 +108,3 @@ npm start
 ### 🧪 Data & Fine-Tuning
 - Explore **synthetic data generation**
 - Collaborate with emergency agencies for **real-world datasets**
-
-## 🙌 Contributing
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
