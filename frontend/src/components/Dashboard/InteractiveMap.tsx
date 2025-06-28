@@ -3,6 +3,7 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { ProcessedIncident } from '@/types/incident';
 
 // Fix for default markers in React Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -15,36 +16,8 @@ L.Icon.Default.mergeOptions({
 // Andhra Pradesh center coordinates
 const AP_CENTER: [number, number] = [15.9129, 79.7400];
 
-// AP Districts with accurate coordinates
-const AP_DISTRICTS = [
-  { name: "Visakhapatnam", lat: 17.6868, lng: 83.2185, incidents: 45, region: "north" },
-  { name: "Vijayawada", lat: 16.5062, lng: 80.6480, incidents: 38, region: "central" },
-  { name: "Tirupati", lat: 13.6288, lng: 79.4192, incidents: 28, region: "south" },
-  { name: "Guntur", lat: 16.3067, lng: 80.4365, incidents: 32, region: "central" },
-  { name: "Nellore", lat: 14.4426, lng: 79.9865, incidents: 23, region: "south" },
-  { name: "Kurnool", lat: 15.8281, lng: 78.0373, incidents: 19, region: "west" },
-  { name: "Rajahmundry", lat: 17.0005, lng: 81.8040, incidents: 25, region: "east" },
-  { name: "Anantapur", lat: 14.6819, lng: 77.6006, incidents: 21, region: "west" },
-  { name: "Chittoor", lat: 13.2172, lng: 79.1003, incidents: 18, region: "south" },
-  { name: "Kadapa", lat: 14.4673, lng: 78.8241, incidents: 16, region: "south" },
-  { name: "Kakinada", lat: 16.9891, lng: 82.2475, incidents: 22, region: "east" },
-  { name: "Eluru", lat: 16.7107, lng: 81.0952, incidents: 14, region: "central" },
-  { name: "Ongole", lat: 15.5057, lng: 80.0499, incidents: 17, region: "central" }
-];
-
-const MOCK_INCIDENTS = [
-  { id: 1, lat: 17.7231, lng: 83.3005, type: "Theft", severity: "Medium", time: "2 mins ago", district: "Visakhapatnam" },
-  { id: 2, lat: 16.5184, lng: 80.6413, type: "Traffic Violation", severity: "Low", time: "5 mins ago", district: "Vijayawada" },
-  { id: 3, lat: 13.6544, lng: 79.4202, type: "Assault", severity: "High", time: "8 mins ago", district: "Tirupati" },
-  { id: 4, lat: 16.3170, lng: 80.4541, type: "Land Dispute", severity: "Medium", time: "12 mins ago", district: "Guntur" },
-  { id: 5, lat: 17.0105, lng: 81.8040, type: "Public Disturbance", severity: "Low", time: "15 mins ago", district: "Rajahmundry" },
-  { id: 6, lat: 14.4500, lng: 79.9900, type: "Theft", severity: "High", time: "18 mins ago", district: "Nellore" },
-  { id: 7, lat: 16.9891, lng: 82.2475, type: "Assault", severity: "High", time: "20 mins ago", district: "Kakinada" },
-  { id: 8, lat: 15.8281, lng: 78.0373, type: "Land Dispute", severity: "Medium", time: "22 mins ago", district: "Kurnool" }
-];
-
 interface InteractiveMapProps {
-  filteredIncidents: typeof MOCK_INCIDENTS;
+  filteredIncidents: ProcessedIncident[];
   selectedDistrict: string;
   showHeatmap: boolean;
   onDistrictSelect: (district: string) => void;
@@ -52,18 +25,18 @@ interface InteractiveMapProps {
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   filteredIncidents,
-  selectedDistrict,
-  showHeatmap,
-  onDistrictSelect
+  showHeatmap
 }) => {
   const getIncidentColor = (type: string) => {
-    const colors = {
-      "Theft": "#3b82f6",
-      "Assault": "#ef4444", 
-      "Land Dispute": "#f97316",
-      "Traffic Violation": "#8b5cf6",
-      "Public Disturbance": "#eab308"
-    };
+      const colors = {
+      "Body Offence": "red",              // violent, high-alert
+      "Robbery": "purple",                // stealthy, criminal
+      "Offence Against Women": "blue",    // empathy, serious
+      "Accident": "orange",               // caution
+      "Disaster": "brown",                // earthy, severe
+      "Missing": "maroon",                // emotional, alert
+      "Offence Against Public": "yellow"  // general public caution
+  };
     return colors[type as keyof typeof colors] || "#6b7280";
   };
 
@@ -114,29 +87,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        {/* District Centers */}
-        {AP_DISTRICTS.map((district) => (
-          <Marker
-            key={district.name}
-            position={[district.lat, district.lng]}
-            eventHandlers={{
-              click: () => onDistrictSelect(district.name)
-            }}
-          >
-            <Popup>
-              <div className="text-center">
-                <h3 className="font-bold text-lg">{district.name}</h3>
-                <p className="text-sm text-gray-600">
-                  {district.incidents} active incidents
-                </p>
-                <p className="text-xs text-gray-500 capitalize">
-                  {district.region} region
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-
         {/* Crime Incidents */}
         {filteredIncidents.map((incident) => (
           <React.Fragment key={incident.id}>
@@ -151,12 +101,18 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 opacity={0.6}
               >
                 <Popup>
-                  <div>
-                    <h4 className="font-bold">INC-{String(incident.id).padStart(3, '0')}</h4>
-                    <p><strong>Type:</strong> {incident.type}</p>
-                    <p><strong>District:</strong> {incident.district}</p>
-                    <p><strong>Severity:</strong> {incident.severity}</p>
-                    <p><strong>Time:</strong> {incident.time}</p>
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-lg">{incident.ticketid}</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><strong>Type:</strong> {incident.type}</p>
+                      <p><strong>Caller:</strong> {incident.caller_name}</p>
+                      <p><strong>District:</strong> {incident.district}</p>
+                      <p><strong>Severity:</strong> {incident.severity}</p>
+                      <p><strong>Address:</strong> {incident.address}</p>
+                      <p><strong>Officer:</strong> {incident.officer}</p>
+                      <p><strong>Status:</strong> {incident.status}</p>
+                      <p><strong>Time:</strong> {incident.time}</p>
+                    </div>
                   </div>
                 </Popup>
               </Circle>
@@ -166,12 +122,18 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 icon={createCustomIcon(getIncidentColor(incident.type), incident.severity)}
               >
                 <Popup>
-                  <div>
-                    <h4 className="font-bold">INC-{String(incident.id).padStart(3, '0')}</h4>
-                    <p><strong>Type:</strong> {incident.type}</p>
-                    <p><strong>District:</strong> {incident.district}</p>
-                    <p><strong>Severity:</strong> {incident.severity}</p>
-                    <p><strong>Time:</strong> {incident.time}</p>
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-lg">{incident.ticketid}</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><strong>Type:</strong> {incident.type}</p>
+                      <p><strong>Caller:</strong> {incident.caller_name}</p>
+                      <p><strong>District:</strong> {incident.district}</p>
+                      <p><strong>Severity:</strong> {incident.severity}</p>
+                      <p><strong>Address:</strong> {incident.address}</p>
+                      <p><strong>Officer:</strong> {incident.officer}</p>
+                      <p><strong>Status:</strong> {incident.status}</p>
+                      <p><strong>Time:</strong> {incident.time}</p>
+                    </div>
                   </div>
                 </Popup>
               </Marker>
