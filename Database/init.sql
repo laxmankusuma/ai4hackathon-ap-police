@@ -1,0 +1,23 @@
+CREATE TABLE incident_reports (
+    sno INT AUTO_INCREMENT PRIMARY KEY,
+    ticketid BIGINT NOT NULL,
+    caller_name VARCHAR(100),
+    caller_phone VARCHAR(20),
+    caller_gender VARCHAR(10),
+    crime_type VARCHAR(100),
+    crime_subtype VARCHAR(100),
+    severity INT,
+    incident_date DATE,
+    incident_time TIME,
+    transcribe_text TEXT,
+    description TEXT,
+    address_text TEXT,
+    verified_address TEXT,
+    district VARCHAR(50),
+    latitude DOUBLE,
+    longitude DOUBLE,
+    evidence_type VARCHAR(15),
+    officer_assigned VARCHAR(100),
+    audio_file VARCHAR(255),
+    review_status VARCHAR(15)
+);

@@ -7,7 +7,7 @@ import { Sidebar } from '@/components/Dashboard/Sidebar';
 import { DashboardHome } from '@/components/Dashboard/DashboardHome';
 import { UploadAudio } from '@/components/Dashboard/UploadAudio';
 import { LiveVoiceAgent } from '@/components/Dashboard/LiveVoiceAgent';
-import { HeatmapDashboard } from '@/components/Dashboard/HeatmapDashboard';
+import {HeatmapDashboard } from '@/components/Dashboard/HeatmapDashboard';
 import { TicketManager } from '@/components/Dashboard/TicketManager';
 import { Settings } from '@/components/Dashboard/Settings';
 
