@@ -9,6 +9,8 @@ from pathlib import Path
 import uuid
 from datetime import datetime
 import random
+from police_complaint_processor import PoliceComplaintProcessor, create_processor
+
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -28,11 +30,6 @@ Path(tmp_file_dir).mkdir(parents=True, exist_ok=True)
 
 # Load Whisper model
 model = faster_whisper.WhisperModel("large-v3")
-
-# Sample function to call with transcription data
-def sample_fun(filename: str, transcription: str, ticket_id: int):
-    print(f"[Ticket ID: {ticket_id}] Processed file: {filename}")
-    print(f"Transcript:\n{transcription[:200]}...") 
 
 @app.post("/transcribe/")
 async def transcribe_audio(files: List[UploadFile] = File(...)):
@@ -58,14 +55,12 @@ async def transcribe_audio(files: List[UploadFile] = File(...)):
             duration = time.time() - start
 
             # Call your custom function
-            sample_fun(file.filename, transcript, ticket_id)
-
-            results.append({
-                "ticket_id": ticket_id,
-                "filename": file.filename,
-                "transcription": transcript,
-                "time_taken_seconds": round(duration, 2)
-            })
+            processor = create_processor()
+            results= processor.process_complaint(
+                text=transcript,
+                filename=file.filename,
+                ticket=ticket_id
+            )            
 
             os.remove(file_path)
 
