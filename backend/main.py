@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from pathlib import Path
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import random
 from police_complaint_processor import PoliceComplaintProcessor, create_processor
 import pymysql
@@ -32,7 +32,7 @@ Path(tmp_file_dir).mkdir(parents=True, exist_ok=True)
 # Load Whisper model
 model = faster_whisper.WhisperModel("large-v3")
 
-DB_HOST = "164.52.196.116"
+DB_HOST = "localhost"
 DB_USER = "aiuser"
 DB_PASSWORD = "Ptpl!234"
 DB_NAME = "aihackathon"
@@ -40,13 +40,14 @@ DB_NAME = "aihackathon"
 def get_connection():
     return pymysql.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor)
 
-@app.post("/transcribe/")
+@app.post("/transcribe")
 async def transcribe_audio(files: List[UploadFile] = File(...)):
     results = []
-    ticket_id = int(datetime.now().strftime("%Y%m%d%H%M%S") + str(random.randint(100, 999)))
 
     try:
         for file in files:
+            ticket_id = int(datetime.now().strftime("%Y%m%d%H%M%S") + str(random.randint(100, 999)))
+            
             temp_filename = f"{uuid.uuid4()}_{file.filename}"
             file_path = os.path.join(tmp_file_dir, temp_filename)
 
@@ -73,12 +74,11 @@ async def transcribe_audio(files: List[UploadFile] = File(...)):
 
             os.remove(file_path)
 
-        return results
+        return "Successfully Ingested"
 
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.get("/total_incidents")
 def total_incidents():
@@ -186,6 +186,22 @@ def incidents_timeframe(hours: int):
         return result
     finally:
         conn.close()
+        
+@app.get("/incident_reports")
+def incident_reports():
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT *
+                FROM incident_reports
+                ORDER BY incident_date DESC
+                limit 5;
+            """)
+            result = cursor.fetchall()
+        return result
+    finally:
+        conn.close()
 
 @app.get("/coordinates")
 def coordinates():
@@ -212,7 +228,6 @@ def all_records():
         return result
     finally:
         conn.close()
-
 
 @app.get("/")
 async def root():

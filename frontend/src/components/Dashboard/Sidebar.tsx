@@ -33,10 +33,7 @@ export const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
           <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
             {isOpen && (
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">112</span>
-                </div>
-                <span className="font-semibold text-gray-900 dark:text-white">Emergency</span>
+                <span className="font-semibold text-gray-900 dark:text-white">Dial 112 Emergency</span>
               </div>
             )}
             <Button

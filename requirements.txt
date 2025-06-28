@@ -1,1 +1,9 @@
-pip install fastapi uvicorn faster-whisper openai pydantic requests mysql-connector-python 
+fastapi 
+uvicorn 
+faster-whisper 
+openai 
+pydantic 
+requests 
+pymysql
+mysql-connector-python 
+python-multipart

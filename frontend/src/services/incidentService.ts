@@ -1,22 +1,22 @@
 // src/services/incidentService.ts
 import { ProcessedIncident } from '@/types/incident';
 
-const API_BASE_URL = 'http://164.52.196.116:8090';
+const API_BASE_URL = 'http://localhost:8000';
 
 export const fetchIncidents = async (): Promise<ProcessedIncident[]> => {
   try {
     console.log('Fetching incidents from:', `${API_BASE_URL}/all_records`);
-    
+
     const response = await fetch(`${API_BASE_URL}/all_records`);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     // Get the raw response text first to debug
     const rawText = await response.text();
     console.log('Raw response:', rawText);
-    
+
     // Parse the JSON
     let data;
     try {
@@ -28,7 +28,7 @@ export const fetchIncidents = async (): Promise<ProcessedIncident[]> => {
       console.error('JSON parsing error:', parseError);
       throw new Error('Invalid JSON response from server');
     }
-    
+
     // Handle different response structures
     let incidents;
     if (Array.isArray(data)) {
@@ -47,31 +47,31 @@ export const fetchIncidents = async (): Promise<ProcessedIncident[]> => {
       console.error('Unexpected response structure:', data);
       throw new Error('Unexpected response structure from server');
     }
-    
+
     console.log('Processing incidents:', incidents.length, 'items');
-    
+
     // Validate that we have an array
     if (!Array.isArray(incidents)) {
       throw new Error('Expected array of incidents but got: ' + typeof incidents);
     }
-    
+
     // Process and validate each incident
     const processedIncidents = incidents.map((incident: any, index: number) => {
       console.log(`Processing incident ${index}:`, incident);
-      
+
       // Validate required fields exist
       if (!incident || typeof incident !== 'object') {
         console.warn(`Invalid incident at index ${index}:`, incident);
         return null;
       }
-      
+
       return {
         id: incident.id || incident.incident_id || Math.floor(Math.random() * 100000),
         lat: parseFloat(incident.lat || incident.latitude || '0') || 0,
         lng: parseFloat(incident.lng || incident.longitude || '0') || 0,
         type: incident.type || incident.crime_type || incident.incident_type || 'Unknown',
         severity: incident.severity || incident.priority || 'Medium',
-        time: incident.time || incident.timestamp || incident.created_at || 'Unknown',
+        time: incident.time || incident.incident_date || incident.created_at || 'Unknown',
         district: incident.district || incident.area || incident.location || 'Unknown',
         description: incident.description || incident.details || '',
         ticketid: incident.ticketid || incident.ticket_id || incident.reference_number || '',
@@ -81,13 +81,13 @@ export const fetchIncidents = async (): Promise<ProcessedIncident[]> => {
         status: incident.status || incident.case_status || 'Pending'
       };
     }).filter(Boolean); // Remove any null entries
-    
+
     console.log('Successfully processed incidents:', processedIncidents.length);
     return processedIncidents as ProcessedIncident[];
-    
+
   } catch (error) {
     console.error('Error fetching incidents:', error);
-    
+
     // More specific error handling
     if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
@@ -124,7 +124,7 @@ export const fetchIncidentsAlternative = async (): Promise<ProcessedIncident[]> 
     }
 
     const data = await response.json();
-    
+
     // Simple processing assuming direct array
     if (!Array.isArray(data)) {
       throw new Error('Expected array response');
@@ -154,7 +154,7 @@ export const fetchIncidentsAlternative = async (): Promise<ProcessedIncident[]> 
 
 export const getDistrictStats = (incidents: ProcessedIncident[]) => {
   const districtMap = new Map<string, number>();
-  
+
   incidents.forEach(incident => {
     const count = districtMap.get(incident.district) || 0;
     districtMap.set(incident.district, count + 1);
@@ -167,26 +167,26 @@ export const getDistrictStats = (incidents: ProcessedIncident[]) => {
 
 export const getCrimeTypeStats = (incidents: ProcessedIncident[]) => {
   const typeMap = new Map<string, number>();
-  
+
   incidents.forEach(incident => {
     const count = typeMap.get(incident.type) || 0;
     typeMap.set(incident.type, count + 1);
   });
 
-    const colors = {
-      "Body Offence": "red",              // violent, high-alert
-      "Robbery": "purple",                // stealthy, criminal
-      "Offence Against Women": "blue",    // empathy, serious
-      "Accident": "orange",               // caution
-      "Disaster": "brown",                // earthy, severe
-      "Missing": "maroon",                // emotional, alert
-      "Offence Against Public": "yellow"  // general public caution
+  const colors = {
+    "Body Offence": "red",              // violent, high-alert
+    "Robbery": "purple",                // stealthy, criminal
+    "Offence Against Women": "blue",    // empathy, serious
+    "Accident": "orange",               // caution
+    "Disaster": "brown",                // earthy, severe
+    "Missing": "maroon",                // emotional, alert
+    "Offence Against Public": "yellow"  // general public caution
   };
 
 
   return Array.from(typeMap.entries())
-    .map(([type, count]) => ({ 
-      type, 
+    .map(([type, count]) => ({
+      type,
       count,
       color: colors[type as keyof typeof colors] || "#6b7280"
     }))
