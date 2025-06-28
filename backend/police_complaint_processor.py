@@ -331,7 +331,8 @@ class PoliceComplaintProcessor:
         
         # If phone is null and filename is provided, extract phone from filename
         phone = entities.get('phone')
-        if not phone and filename:
+        print(phone)
+        if (not phone or str(phone).strip().lower() == 'null') and filename:
             phone = self.extract_phone_from_filename(filename)
             logger.info(f"Extracted phone from filename: {phone}")
             entities['phone'] = phone
@@ -403,7 +404,7 @@ class PoliceComplaintProcessor:
 # Configuration constants
 DEFAULT_GOOGLE_API_KEY = "AIzaSyDWT0N7pHNSf-SQ5ueYHwrWWuA3_aec580"
 DEFAULT_DB_CONFIG = {
-    'host': 'localhost',
+    'host': '164.52.196.228',
     'database': 'aihackathon',
     'user': 'aiuser',
     'password': 'Ptpl!234'
