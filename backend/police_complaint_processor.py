@@ -59,7 +59,7 @@ class PoliceComplaintProcessor:
         self.google_api_key = google_api_key
         self.db_config = db_config 
         self.chat = OpenAI(
-            base_url="http://164.52.196.228:8020/v1",
+            base_url="http://164.52.196.116:8020/v1",
             api_key="llm-key"  # vLLM doesn't require a real API key
         )
         self.model_name = 'meta-llama/Llama-3.1-8B-Instruct'
@@ -207,7 +207,6 @@ class PoliceComplaintProcessor:
                     elif 'administrative_area_level_2' in component['types']:
                         verified_district = component['long_name']
                         break
-                
                 return verified_address, latitude, longitude, verified_district
             else:
                 logger.warning(f"Geocoding failed: {data.get('status', 'Unknown error')}")
@@ -316,6 +315,97 @@ class PoliceComplaintProcessor:
             
         return None
     
+    def contains_andhra_pradesh(self, address):
+        if not address:
+            return False
+        
+        # Convert to lowercase for case-insensitive comparison
+        address_lower = address.lower()
+        
+        # List of Andhra Pradesh variations
+        ap_variations = [
+            'andhra pradesh',
+            'andrapradesh', 
+            'andra pradesh',
+            'andrapradesh',
+            'andra',
+            'ap'
+        ]
+        
+        # Check if any variation is present
+        return any(variation in address_lower for variation in ap_variations)
+        
+    def correct_address_with_llm(self, address):
+        system_prompt = """  
+            You are an expert address formatter for Andhra Pradesh, India. Your task is to correct, standardize, and rephrase incomplete or poorly formatted addresses while retaining all original information. Follow these rules strictly:  
+
+            1. Grammar & Readability:  
+            - Fix spelling errors (e.g., "Guntur" not "Gunturr").  
+            - Use proper commas, line breaks, and capitalization (e.g., "H.No 5-6, Near Bank" not "hno 5-6 near bank").  
+
+            2. Standard Format:  
+            - Follow hierarchy: [House/Flat] → [Street/Landmark] → [Locality] → [City] → [District] → [State] → [Pincode].  
+            - Example: "Door No. 8-2-1, Gandhi Road, Ameerpet, Hyderabad, Telangana 500016" → "Door No. 8-2-1, Gandhi Road, Ameerpet, Hyderabad, Telangana, 500016."  
+
+            3. AP-Specific Conventions:  
+            - Mandals: Use "Mandal" suffix (e.g., "Bapatla Mandal").  
+            - Cities: Append district if missing (e.g., "Kakinada" → "Kakinada, East Godavari Dist.").  
+            - Landmarks: Expand abbreviations (e.g., "APSPDCL" → "Near APSPDCL Office").  
+
+            4. Pincodes:  
+            - Add/validate 6-digit pincodes if possible (e.g., "Vijayawada" → "Vijayawada, 520001").  
+
+            5. Output:  
+            - Return only the corrected address in a single line, without explanations.  
+
+            Example Input: "hno 22 near rly stn nellore"  
+            Output: "H.No. 22, Near Railway Station, Nellore, SPSR Nellore Dist., Andhra Pradesh."  
+            """
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": address}
+        ]
+        
+        try:
+            response = self.chat.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                temperature=0,
+                max_tokens=100
+            )
+            
+            result = response.choices[0].message.content.strip()
+            logger.info(f"Address corrected: '{address}' → '{result}'")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Address correction error: {e}")
+            return f"{address}, Andhra Pradesh"
+        
+    def validate_and_correct_address(self, address):
+        # First attempt to geocode the original address
+        verified_address, latitude, longitude, district = self.geocode_address(address)
+        
+        # Check if geocoding was successful and if verified_address contains Andhra Pradesh
+        if verified_address and self.contains_andhra_pradesh(verified_address) and latitude:
+            return verified_address, latitude, longitude, district
+        
+        # If geocoding failed or Andhra Pradesh is not found, use LLM to correct the address
+        logger.info(f"Address '{address}' does not contain Andhra Pradesh. Attempting correction...")
+        corrected_address = self.correct_address_with_llm(address)
+        
+        # Re-geocode the corrected address
+        verified_address, latitude, longitude, district = self.geocode_address(corrected_address)
+        
+        # If still no success, log the issue
+        if not verified_address:
+            logger.warning(f"Failed to geocode even after correction. Original: '{address}', Corrected: '{corrected_address}'")
+        
+        return verified_address, latitude, longitude, district
+
+
+
     def process_complaint(self, text, filename=None, ticket=None):
         """Main function to process police complaint"""
         
@@ -332,7 +422,7 @@ class PoliceComplaintProcessor:
         # If phone is null and filename is provided, extract phone from filename
         phone = entities.get('phone')
         print(phone)
-        if (not phone or str(phone).strip().lower() == 'null') and filename:
+        if ( not phone or str(phone).strip().lower() == 'null' or not (str(phone).isdigit() and len(str(phone)) == 10)) and filename:
             phone = self.extract_phone_from_filename(filename)
             logger.info(f"Extracted phone from filename: {phone}")
             entities['phone'] = phone
@@ -351,16 +441,11 @@ class PoliceComplaintProcessor:
         
         # Geocode address
         logger.info("Geocoding address...")
-        verified_address, latitude, longitude, district = self.geocode_address(address)
+        verified_address, latitude, longitude, district = self.validate_and_correct_address(address)
         
         # Assign random officer
         officer_assigned = random.choice(OFFICER_NAMES)
-        
-        # # Use provided ticket ID or generate new one
-        # if ticket:
-        #     ticket_id = ticket
-        # else:
-        #     ticket_id = self.insert_into_database({})  # Generate new ticket ID
+    
         
         # Build result in JSON format
         result = {
@@ -404,7 +489,7 @@ class PoliceComplaintProcessor:
 # Configuration constants
 DEFAULT_GOOGLE_API_KEY = "AIzaSyDWT0N7pHNSf-SQ5ueYHwrWWuA3_aec580"
 DEFAULT_DB_CONFIG = {
-    'host': '164.52.196.228',
+    'host': '164.52.196.116',
     'database': 'aihackathon',
     'user': 'aiuser',
     'password': 'Ptpl!234'
@@ -415,20 +500,3 @@ def create_processor(google_api_key=None, db_config=None):
     api_key = google_api_key or DEFAULT_GOOGLE_API_KEY
     db_conf = db_config or DEFAULT_DB_CONFIG
     return PoliceComplaintProcessor(api_key, db_conf)
-
-# # Example usage (can be removed in production)
-# if __name__ == "__main__":
-#     # Example of how to use the processor
-#     processor = create_processor()
-    
-#     sample_text = "I want to report a theft. Someone stole my bike from the parking area."
-#     sample_filename = "complaint_9876543210.wav"
-    
-#     result = processor.process_complaint(
-#         text=sample_text,
-#         filename=sample_filename,
-#         ticket=None  # Will generate new ticket ID
-#     )
-    
-#     print("Processed Complaint:")
-#     print(json.dumps(result, indent=2))
