@@ -37,8 +37,6 @@ from agno.tools.google_maps import GoogleMapTools
 from agno.models.ollama import Ollama
 TEMP_DIR = "temp"
 os.makedirs(TEMP_DIR, exist_ok=True)
-hf_token = "hf_token"
-login(token=hf_token)
 
 try:
     whisper_model = faster_whisper.WhisperModel("large-v3", device="cuda", compute_type="float16")
