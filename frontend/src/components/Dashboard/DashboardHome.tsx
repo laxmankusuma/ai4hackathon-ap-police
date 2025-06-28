@@ -34,7 +34,7 @@ import {
   RadialBar
 } from 'recharts';
 
-const API_BASE_URL = 'http://localhost:8000'; // Adjust this to your API URL
+const API_BASE_URL = 'http://164.52.196.116:8000'; // Adjust this to your API URL
 
 export const DashboardHome = () => {
   const [totalIncidents, setTotalIncidents] = useState(0);
