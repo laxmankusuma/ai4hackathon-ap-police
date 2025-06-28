@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Upload, 
-  FileAudio, 
-  CheckCircle, 
-  Clock, 
+import {
+  Upload,
+  FileAudio,
+  CheckCircle,
+  Clock,
   MapPin,
   Download,
   Eye,
@@ -28,18 +28,18 @@ export const UploadAudio = () => {
   const handleFilesAdded = (files: File[]) => {
     setError('');
     setSuccessMessage('');
-    const audioFiles = files.filter(file => 
-      file.type.startsWith('audio/') || 
-      file.name.toLowerCase().endsWith('.mp3') || 
+    const audioFiles = files.filter(file =>
+      file.type.startsWith('audio/') ||
+      file.name.toLowerCase().endsWith('.mp3') ||
       file.name.toLowerCase().endsWith('.wav') ||
       file.name.toLowerCase().endsWith('.m4a') ||
       file.name.toLowerCase().endsWith('.flac')
     );
-    
+
     if (audioFiles.length !== files.length) {
       setError('Some files were rejected. Only audio files (MP3, WAV, M4A, FLAC) are supported.');
     }
-    
+
     setUploadedFiles(prev => [...prev, ...audioFiles]);
   };
 
@@ -61,7 +61,7 @@ export const UploadAudio = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const files = Array.from(e.dataTransfer.files);
     handleFilesAdded(files);
   };
@@ -96,7 +96,7 @@ export const UploadAudio = () => {
     setUploadProgress(0);
     setError('');
     setSuccessMessage('');
-    
+
     try {
       const formData = new FormData();
       uploadedFiles.forEach((file) => {
@@ -114,7 +114,7 @@ export const UploadAudio = () => {
         });
       }, 200);
 
-      const response = await fetch('/transcribe', {
+      const response = await fetch('http://164.52.196.116:8000/transcribe', {
         method: 'POST',
         body: formData,
       });
@@ -127,10 +127,10 @@ export const UploadAudio = () => {
       }
 
       const result = await response.text();
-      
+
       setUploadProgress(100);
       setSuccessMessage(result || 'Files processed successfully!');
-      
+
       // Clear uploaded files after successful processing
       setTimeout(() => {
         setUploadedFiles([]);
@@ -187,18 +187,18 @@ export const UploadAudio = () => {
               onChange={handleFileChange}
               className="hidden"
             />
-            
+
             <FileAudio className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            
+
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               Drop your audio files here or click to select
             </h3>
-            
+
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               Supports MP3, WAV, M4A, FLAC files
             </p>
-            
-            <Button 
+
+            <Button
               type="button"
               className="bg-blue-600 hover:bg-blue-700"
               onClick={(e) => {
@@ -255,10 +255,10 @@ export const UploadAudio = () => {
                   </div>
                 ))}
               </div>
-              
+
               <div className="mt-4 flex justify-end">
-                <Button 
-                  onClick={handleUpload} 
+                <Button
+                  onClick={handleUpload}
                   disabled={isProcessing}
                   className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
                 >
@@ -285,7 +285,7 @@ export const UploadAudio = () => {
                 </div>
                 <Progress value={uploadProgress} className="h-2" />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {processingStages.map((stage) => (
                   <div key={stage.id} className="flex items-center space-x-2">
@@ -296,13 +296,12 @@ export const UploadAudio = () => {
                     ) : (
                       <Clock className="h-5 w-5 text-gray-400" />
                     )}
-                    <span className={`text-sm ${
-                      stage.status === 'completed' 
-                        ? 'text-green-600' 
+                    <span className={`text-sm ${stage.status === 'completed'
+                        ? 'text-green-600'
                         : stage.status === 'processing'
-                        ? 'text-blue-600'
-                        : 'text-gray-600'
-                    }`}>
+                          ? 'text-blue-600'
+                          : 'text-gray-600'
+                      }`}>
                       {stage.name}
                     </span>
                   </div>

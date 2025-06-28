@@ -1,0 +1,1 @@
+nohup vllm serve meta-llama/Llama-3.1-8B-Instruct --host 164.52.196.228 --port 8020 --api-key llm-key > vllm.log 2>&1 &
