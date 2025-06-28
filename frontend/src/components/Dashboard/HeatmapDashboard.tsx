@@ -8,10 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { InteractiveMap } from './InteractiveMap';
 import { fetchIncidents, fetchIncidentsAlternative, getDistrictStats, getCrimeTypeStats } from '@/services/incidentService';
 import { ProcessedIncident } from '@/types/incident';
-import { 
-  MapPin, 
-  Filter, 
-  Play, 
+import {
+  MapPin,
+  Filter,
+  Play,
   Pause,
   Calendar,
   Clock,
@@ -20,22 +20,33 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle,
-  WifiOff
+  WifiOff,
+  Settings,
+  BarChart3,
+  X
 } from 'lucide-react';
 
-export const HeatmapDashboard = () => {
+interface HeatmapDashboardProps {
+  sidebarOpen?: boolean;
+}
+
+
+export const HeatmapDashboard = ({ sidebarOpen = true }: HeatmapDashboardProps) => {
   const [incidents, setIncidents] = useState<ProcessedIncident[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'error' | 'loading'>('loading');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState("all");
-  const [selectedTimeRange, setSelectedTimeRange] = useState("24h");
+  const [selectedTimeRange, setSelectedTimeRange] = useState("all");
   const [selectedCrimeType, setSelectedCrimeType] = useState("all");
   const [isPlaying, setIsPlaying] = useState(false);
   const [timelineValue, setTimelineValue] = useState([75]);
-  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+
+  // Active panel state - only one can be open at a time
+  const [activePanel, setActivePanel] = useState<'filters' | 'controls' | 'stats' | null>(null);
 
   // Load incidents data with improved error handling
   const loadIncidents = async (useAlternative: boolean = false) => {
@@ -43,13 +54,13 @@ export const HeatmapDashboard = () => {
       setLoading(true);
       setError(null);
       setConnectionStatus('loading');
-      
+
       console.log(`Attempting to fetch incidents (attempt ${retryCount + 1})...`);
-      
-      const data = useAlternative ? 
-        await fetchIncidentsAlternative() : 
+
+      const data = useAlternative ?
+        await fetchIncidentsAlternative() :
         await fetchIncidents();
-      
+
       if (data && data.length > 0) {
         setIncidents(data);
         setConnectionStatus('connected');
@@ -66,14 +77,14 @@ export const HeatmapDashboard = () => {
       console.error('Failed to fetch incidents:', err);
       setConnectionStatus('error');
       setRetryCount(prev => prev + 1);
-      
+
       // Try alternative method if main method fails and we haven't tried it yet
       if (!useAlternative && retryCount < 2) {
         console.log('Trying alternative fetch method...');
         setTimeout(() => loadIncidents(true), 1000);
         return;
       }
-      
+
       // Set user-friendly error messages
       if (err.message.includes('Network error') || err.message.includes('fetch')) {
         setError('Unable to connect to the server. Please check your internet connection and try again.');
@@ -84,7 +95,7 @@ export const HeatmapDashboard = () => {
       } else {
         setError(err.message || 'An unexpected error occurred while loading incident data.');
       }
-      
+
       setIncidents([]);
     } finally {
       setLoading(false);
@@ -98,6 +109,11 @@ export const HeatmapDashboard = () => {
     } else {
       setError('Maximum retry attempts reached. Please try again later or contact support.');
     }
+  };
+
+  // Handle panel toggle - close others when opening one
+  const togglePanel = (panel: 'filters' | 'controls' | 'stats') => {
+    setActivePanel(activePanel === panel ? null : panel);
   };
 
   useEffect(() => {
@@ -120,11 +136,48 @@ export const HeatmapDashboard = () => {
   const districtStats = incidents.length > 0 ? getDistrictStats(incidents) : [];
   const crimeTypeStats = incidents.length > 0 ? getCrimeTypeStats(incidents) : [];
 
+  // Add this helper function to filter incidents by time range
+  const filterIncidentsByTimeRange = (incidents: ProcessedIncident[], timeRange: string) => {
+    const now = new Date();
+    const cutoffTime = new Date();
+
+    switch (timeRange) {
+      case '1h':
+        cutoffTime.setHours(now.getHours() - 1);
+        break;
+      case '6h':
+        cutoffTime.setHours(now.getHours() - 6);
+        break;
+      case '24h':
+        cutoffTime.setDate(now.getDate() - 1);
+        break;
+      case '7d':
+        cutoffTime.setDate(now.getDate() - 7);
+        break;
+      case '30d':
+        cutoffTime.setDate(now.getDate() - 30);
+        break;
+      default:
+        return incidents; // 'all' case
+    }
+
+    return incidents.filter(incident => {
+      console.log(incident)
+      // Assuming incident.time is a string, you'll need to parse it to Date
+      const incidentTime = new Date(incident.time); // Adjust parsing based on your time format
+      return incidentTime >= cutoffTime;
+    });
+  };
+
   // Filter incidents based on selected criteria
   const filteredIncidents = incidents.filter(incident => {
     if (selectedDistrict !== "all" && incident.district !== selectedDistrict) return false;
     if (selectedCrimeType !== "all" && incident.type !== selectedCrimeType) return false;
     return true;
+  }).filter(incident => {
+    // Apply time range filter
+    if (selectedTimeRange === "all") return true;
+    return filterIncidentsByTimeRange([incident], selectedTimeRange).length > 0;
   });
 
   const getIncidentColor = (type: string) => {
@@ -136,21 +189,21 @@ export const HeatmapDashboard = () => {
     switch (connectionStatus) {
       case 'connected':
         return (
-          <Badge className="bg-green-100 text-green-800 px-3 py-1">
+          <Badge className="bg-green-500/20 text-green-200 border-green-500/30 backdrop-blur-sm">
             <CheckCircle className="h-3 w-3 mr-1" />
             Connected
           </Badge>
         );
       case 'error':
         return (
-          <Badge className="bg-red-100 text-red-800 px-3 py-1">
+          <Badge className="bg-red-500/20 text-red-200 border-red-500/30 backdrop-blur-sm">
             <WifiOff className="h-3 w-3 mr-1" />
             Connection Error
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-yellow-100 text-yellow-800 px-3 py-1">
+          <Badge className="bg-yellow-500/20 text-yellow-200 border-yellow-500/30 backdrop-blur-sm">
             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
             Connecting...
           </Badge>
@@ -160,119 +213,181 @@ export const HeatmapDashboard = () => {
 
   if (loading && incidents.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-          <p>Loading incident data from API...</p>
-          <p className="text-sm text-gray-500">
-            Connecting to: http://164.52.196.116:7809/all_records
-          </p>
-          {retryCount > 0 && (
-            <p className="text-sm text-orange-600">
-              Retry attempt {retryCount + 1}...
+      <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center space-y-6 p-8 bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-700/50 shadow-2xl">
+          <div className="relative">
+            <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20"></div>
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-400 relative z-10" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-xl font-semibold text-gray-100">Loading Crime Data</p>
+            <p className="text-blue-300">
+              Connecting to: http://164.52.196.116:7809/all_records
             </p>
-          )}
+            {retryCount > 0 && (
+              <p className="text-sm text-orange-300">
+                Retry attempt {retryCount + 1}...
+              </p>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Andhra Pradesh Crime Heatmap Dashboard
-        </h2>
-        <div className="flex items-center space-x-3">
-          {getConnectionStatusBadge()}
-          <Badge variant="outline" className="px-3 py-1">
-            {filteredIncidents.length} Active Incidents
-          </Badge>
-          {lastUpdated && (
-            <Badge variant="outline" className="px-3 py-1 text-xs">
-              Updated: {lastUpdated.toLocaleTimeString()}
+    <div className="fixed inset-0 bg-gray-50 overflow-hidden">
+      {/* Full-screen map container */}
+      <div className="absolute inset-0">
+        {filteredIncidents.length > 0 ? (
+          <InteractiveMap
+            filteredIncidents={filteredIncidents}
+            selectedDistrict={selectedDistrict}
+            showHeatmap={showHeatmap}
+            onDistrictSelect={setSelectedDistrict}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-100 to-gray-200">
+            <div className="text-center space-y-4 p-8 bg-gray-900/80 backdrop-blur-lg rounded-2xl border border-gray-700/50 shadow-2xl">
+              <MapPin className="h-16 w-16 text-gray-400 mx-auto" />
+              <p className="text-gray-100 text-xl">No incidents to display on map</p>
+              {loading && (
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-400" />
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Floating Header - Fixed width when sidebar is closed */}
+      <div className={`absolute top-4 z-[9999] transition-all duration-300 ${sidebarOpen ? 'left-[280px] right-4' : 'left-20 right-4'
+        }`}>
+        <div className="flex items-center justify-between p-4 bg-gray-900/90 backdrop-blur-lg rounded-2xl border border-gray-700/50 shadow-2xl">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <h1 className="text-xl font-bold text-gray-100">
+                Andhra Pradesh Crime Dashboard
+              </h1>
+            </div>
+            {getConnectionStatusBadge()}
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 backdrop-blur-sm">
+              {filteredIncidents.length} Active Incidents
             </Badge>
-          )}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => loadIncidents()}
-            disabled={loading}
+            {lastUpdated && (
+              <Badge className="bg-purple-500/20 text-purple-200 border-purple-500/30 backdrop-blur-sm text-xs">
+                Updated: {lastUpdated.toLocaleTimeString()}
+              </Badge>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => loadIncidents()}
+              disabled={loading}
+              className="bg-gray-800/80 border-gray-600/50 text-gray-100 hover:bg-gray-700/80 backdrop-blur-sm"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Error Banner - Responsive to sidebar state */}
+      {error && (
+        <div className={`absolute top-20 z-[9998] transition-all duration-300 ${sidebarOpen ? 'left-[280px] right-4' : 'left-4 right-4'
+          }`}>
+          <div className="p-4 bg-red-900/80 backdrop-blur-lg rounded-2xl border border-red-700/50 shadow-2xl">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium text-red-200">{error}</p>
+                <div className="mt-3 flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetry}
+                    disabled={loading || retryCount >= 3}
+                    className="bg-red-800/50 border-red-600/50 text-red-200 hover:bg-red-700/50"
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Retry Connection
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Center Control Buttons - Responsive to sidebar */}
+      <div className={`absolute bottom-6 z-[9997] transition-all duration-300 ${sidebarOpen ? 'left-1/2 transform -translate-x-1/2 ml-[140px]' : 'left-1/2 transform -translate-x-1/2'
+        }`}>
+        <div className="flex items-center space-x-3 bg-gray-900/90 backdrop-blur-lg rounded-2xl border border-gray-700/50 shadow-2xl p-2">
+          <Button
+            onClick={() => togglePanel('filters')}
+            className={`w-12 h-12 rounded-xl transition-all duration-200 ${activePanel === 'filters'
+              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg scale-105'
+              : 'bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-white'
+              }`}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            <Filter className="h-5 w-5" />
+          </Button>
+          <Button
+            onClick={() => togglePanel('controls')}
+            className={`w-12 h-12 rounded-xl transition-all duration-200 ${activePanel === 'controls'
+              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg scale-105'
+              : 'bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-white'
+              }`}
+          >
+            <Settings className="h-5 w-5" />
+          </Button>
+          <Button
+            onClick={() => togglePanel('stats')}
+            className={`w-12 h-12 rounded-xl transition-all duration-200 ${activePanel === 'stats'
+              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg scale-105'
+              : 'bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 hover:text-white'
+              }`}
+          >
+            <BarChart3 className="h-5 w-5" />
           </Button>
         </div>
       </div>
 
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-4">
-            <div className="flex items-start space-x-3">
-              <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="font-medium text-red-800">{error}</p>
-                <div className="mt-3 space-y-2">
-                  <p className="text-sm text-red-600">
-                    API Endpoint: http://164.52.196.116:7809/all_records
-                  </p>
-                  <p className="text-sm text-red-600">
-                    Retry attempts: {retryCount}/3
-                  </p>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleRetry}
-                      disabled={loading || retryCount >= 3}
-                    >
-                      {loading ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                      )}
-                      Retry Connection
-                    </Button>
-                  </div>
-                </div>
+      {/* Floating Filters Panel - Reduced size */}
+      <div className={`absolute bottom-24 z-[9996] transition-all duration-300 ${sidebarOpen ? 'left-1/2 transform -translate-x-1/2 ml-[140px]' : 'left-1/2 transform -translate-x-1/2'
+        } ${activePanel === 'filters' ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'}`}>
+        <Card className="w-80 max-h-[50vh] bg-gray-900/95 backdrop-blur-lg border border-gray-700/50 text-gray-100 shadow-2xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between text-sm">
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4 text-blue-400" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Show message when no data but no error */}
-      {!loading && !error && incidents.length === 0 && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2 text-yellow-800">
-              <AlertCircle className="h-5 w-5" />
-              <p className="font-medium">No incident data available</p>
-            </div>
-            <p className="text-sm text-yellow-600 mt-2">
-              The API connection is working but no incidents were returned. The database may be empty or filters may be too restrictive.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-        {/* Enhanced Filters Sidebar */}
-        <Card className="xl:col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Filter className="h-5 w-5" />
-              <span>Filters & Controls</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActivePanel(null)}
+                className="text-gray-400 hover:text-gray-100 hover:bg-gray-800/50 h-6 w-6 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="items-center space-y-3 no-scrollbar overflow-y-auto max-h-[40vh] pr-2">
             {/* District Filter */}
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+              <label className="text-xs font-medium text-gray-300 mb-1 block">
                 District ({districtStats.length} districts)
               </label>
               <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
-                <SelectTrigger disabled={loading || districtStats.length === 0}>
+                <SelectTrigger className="bg-gray-800/50 border-gray-600/50 text-gray-100 h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -288,15 +403,16 @@ export const HeatmapDashboard = () => {
 
             {/* Time Range Filter */}
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+              <label className="text-xs font-medium text-gray-300 mb-1 block">
                 Time Range
               </label>
               <Select value={selectedTimeRange} onValueChange={setSelectedTimeRange}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-gray-800/50 border-gray-600/50 text-gray-100 h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1h">Past 1 Hour</SelectItem>
+                  <SelectItem value="all">All Time</SelectItem> {/* Add this line */}
+                  <SelectItem value="1h">Past 1 Hours</SelectItem>
                   <SelectItem value="6h">Past 6 Hours</SelectItem>
                   <SelectItem value="24h">Past 24 Hours</SelectItem>
                   <SelectItem value="7d">Past 7 Days</SelectItem>
@@ -305,235 +421,187 @@ export const HeatmapDashboard = () => {
               </Select>
             </div>
 
-            {/* Map View Controls */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
-                Map Display
-              </label>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Heatmap View</span>
-                  <Switch checked={showHeatmap} onCheckedChange={setShowHeatmap} />
-                </div>
-              </div>
-            </div>
-
             {/* Crime Types */}
             <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
+              <label className="text-xs font-medium text-gray-300 mb-1 block">
                 Crime Categories ({crimeTypeStats.length} types)
               </label>
-              <div className="space-y-2">
+              <div className="space-y-1 max-h-32 no-scrollbar overflow-y-auto">
                 {crimeTypeStats.length > 0 ? (
                   crimeTypeStats.map((crime, index) => (
-                    <div 
-                      key={index} 
-                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
-                        selectedCrimeType === crime.type || selectedCrimeType === "all"
-                          ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-                      }`}
+                    <div
+                      key={index}
+                      className={`flex items-center justify-between p-1.5 rounded cursor-pointer transition-all text-xs ${selectedCrimeType === crime.type || selectedCrimeType === "all"
+                        ? 'bg-blue-500/20 border border-blue-500/30'
+                        : 'hover:bg-gray-800/50'
+                        }`}
                       onClick={() => setSelectedCrimeType(crime.type === "All Types" ? "all" : crime.type)}
                     >
-                      <div className="flex items-center space-x-3">
-                        <div 
-                          className="w-4 h-4 rounded-full" 
+                      <div className="flex items-center space-x-1.5">
+                        <div
+                          className="w-2 h-2 rounded-full"
                           style={{ backgroundColor: crime.color }}
                         />
-                        <span className="text-sm font-medium">{crime.type}</span>
+                        <span className="text-xs">{crime.type}</span>
                       </div>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge className="bg-gray-800/50 text-gray-300 text-xs px-1 py-0">
                         {crime.count}
                       </Badge>
                     </div>
                   ))
                 ) : (
-                  <div className="text-sm text-gray-500 p-3 text-center">
+                  <div className="text-xs text-gray-400 p-2 text-center">
                     No crime data available
                   </div>
                 )}
               </div>
             </div>
-
-            {/* Timeline Animation */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 block">
-                Timeline Animation
-              </label>
-              <div className="space-y-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  disabled={filteredIncidents.length === 0}
-                >
-                  {isPlaying ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                  {isPlaying ? 'Pause' : 'Play'} Timeline
-                </Button>
-                <div className="px-1">
-                  <Slider
-                    value={timelineValue}
-                    onValueChange={setTimelineValue}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                    disabled={filteredIncidents.length === 0}
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-2">
-                    <span>00:00</span>
-                    <span>12:00</span>
-                    <span>23:59</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Main Interactive Map Container */}
-        <Card className="xl:col-span-4">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center space-x-2">
-                <MapPin className="h-5 w-5" />
-                <span>Andhra Pradesh Interactive Map</span>
-              </CardTitle>
-              <div className="flex items-center space-x-2">
-                <Badge className={showHeatmap ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"}>
-                  {showHeatmap ? "Heatmap" : "Markers"}
-                </Badge>
-                <Badge variant="outline">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {new Date().toLocaleTimeString()}
-                </Badge>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {filteredIncidents.length > 0 ? (
-              <InteractiveMap
-                filteredIncidents={filteredIncidents}
-                selectedDistrict={selectedDistrict}
-                showHeatmap={showHeatmap}
-                onDistrictSelect={setSelectedDistrict}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg">
-                <div className="text-center space-y-3">
-                  <MapPin className="h-12 w-12 text-gray-400 mx-auto" />
-                  <p className="text-gray-600">No incidents to display on map</p>
-                  {loading && (
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-500" />
-                  )}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Statistics and Recent Incidents */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* District Statistics */}
-        <Card>
-          <CardHeader>
-            <CardTitle>District-wise Statistics</CardTitle>
+      {/* Floating Controls Panel - Reduced size */}
+      <div className={`absolute bottom-24 z-[9995] transition-all duration-300 ${sidebarOpen ? 'left-1/2 transform -translate-x-1/2 ml-[140px]' : 'left-1/2 transform -translate-x-1/2'
+        } ${activePanel === 'controls' ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'}`}>
+        <Card className="w-80 bg-gray-900/95 backdrop-blur-lg border border-gray-700/50 text-gray-100 shadow-2xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between text-sm">
+              <div className="flex items-center space-x-2">
+                <Settings className="h-4 w-4 text-blue-400" />
+                <span>Display Mode</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActivePanel(null)}
+                className="text-gray-400 hover:text-gray-100 hover:bg-gray-800/50 h-6 w-6 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {districtStats.length > 0 ? (
-                districtStats.slice(0, 8).map((district, index) => (
-                  <div
-                    key={district.name}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                    onClick={() => setSelectedDistrict(district.name)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                        #{index + 1}
+          <CardContent className="space-y-3">
+            {/* Map View Controls */}
+            <div>
+              <div className="flex items-center justify-between p-2 bg-gray-800/50 rounded">
+                <span className="text-xs">Heatmap View</span>
+                <Switch checked={showHeatmap} onCheckedChange={setShowHeatmap} />
+              </div>
+            </div>
+
+            {/* Timeline Animation */}
+
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Floating Stats Panel - Reduced size with proper scrolling */}
+      <div className={`absolute bottom-24 z-[9994] transition-all duration-300 ${sidebarOpen ? 'left-1/2 transform -translate-x-1/2 ml-[140px]' : 'left-1/2 transform -translate-x-1/2'
+        } ${activePanel === 'stats' ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'}`}>
+        <Card className="w-80 max-h-[50vh] bg-gray-900/95 backdrop-blur-lg border border-gray-700/50 text-gray-100 shadow-2xl flex flex-col">
+          <CardHeader className="pb-2 flex-shrink-0">
+            <CardTitle className="flex items-center justify-between text-sm">
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="h-4 w-4 text-blue-400" />
+                <span>Statistics</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActivePanel(null)}
+                className="text-gray-400 hover:text-gray-100 hover:bg-gray-800/50 h-6 w-6 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 no-scrollbar overflow-y-auto flex-1 pr-2">
+            {/* District Statistics */}
+            <div>
+              <h3 className="text-xs font-medium text-gray-300 mb-1">Top Districts</h3>
+              <div className="space-y-1">
+                {districtStats.length > 0 ? (
+                  districtStats.slice(0, 5).map((district, index) => (
+                    <div
+                      key={district.name}
+                      className="flex items-center justify-between p-1.5 bg-gray-800/50 rounded hover:bg-gray-700/50 transition-colors cursor-pointer"
+                      onClick={() => setSelectedDistrict(district.name)}
+                    >
+                      <div className="flex items-center space-x-1.5">
+                        <div className="text-xs font-bold text-blue-400">
+                          #{index + 1}
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium">{district.name}</p>
+                          <p className="text-xs text-gray-400">{district.incidents} incidents</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{district.name}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {district.incidents} incidents
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
+                      <div className="w-8 h-1 bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-400 to-purple-400 transition-all duration-500"
                           style={{ width: `${Math.min((district.incidents / Math.max(...districtStats.map(d => d.incidents))) * 100, 100)}%` }}
                         />
                       </div>
-                      <span className="text-xs text-gray-500 mt-1">{district.incidents}</span>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-2 text-gray-400">
+                    <AlertCircle className="h-4 w-4 mx-auto mb-1" />
+                    <p className="text-xs">No district data available</p>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                  <p>No district statistics available</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Recent Incidents */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5" />
-              <span>Recent Incidents</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {filteredIncidents.length > 0 ? (
-                filteredIncidents.slice(0, 8).map((incident, index) => (
-                  <div
-                    key={incident.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div 
-                        className="w-4 h-4 rounded-full animate-pulse" 
-                        style={{ backgroundColor: getIncidentColor(incident.type) }}
-                      />
-                      <div>
-                        <p className="font-medium">{incident.ticketid || `INC-${incident.id}`} - {incident.type}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {incident.district} - {incident.caller_name}
-                        </p>
+            {/* Recent Incidents */}
+            <div>
+              <h3 className="text-xs font-medium text-gray-300 mb-1">Recent Incidents</h3>
+              <div className="space-y-1">
+                {filteredIncidents.length > 0 ? (
+                  filteredIncidents.slice(0, 5).map((incident, index) => (
+                    <div
+                      key={incident.id}
+                      className="p-1.5 bg-gray-800/50 rounded hover:bg-gray-700/50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <div className="flex items-center space-x-1.5">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: getIncidentColor(incident.type) }}
+                          />
+                          <span className="text-xs font-medium">{incident.type}</span>
+                        </div>
+                        <Badge className={`text-xs px-1 py-0 ${incident.severity === 'High' ? 'bg-red-500/20 text-red-300' :
+                          incident.severity === 'Medium' ? 'bg-orange-500/20 text-orange-300' :
+                            'bg-green-500/20 text-green-300'
+                          }`}>
+                          {incident.severity}
+                        </Badge>
                       </div>
+                      <p className="text-xs text-gray-400 flex items-center">
+                        <MapPin className="h-2 w-2 mr-1" />
+                        {incident.district} • {incident.time}
+                      </p>
                     </div>
-                    <div className="text-right">
-                      <Badge className={`mb-1 ${
-                        incident.severity === 'High' ? 'bg-red-100 text-red-800' :
-                        incident.severity === 'Medium' ? 'bg-orange-100 text-orange-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {incident.severity}
-                      </Badge>
-                      <p className="text-sm text-gray-500">{incident.time}</p>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-2 text-gray-400">
+                    <Calendar className="h-4 w-4 mx-auto mb-1" />
+                    <p className="text-xs">No recent incidents</p>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Calendar className="h-8 w-8 mx-auto mb-2" />
-                  <p>No recent incidents found</p>
-                  {error && (
-                    <p className="text-sm mt-2">Check your connection and try refreshing</p>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Floating Time Badge */}
+      <div className="absolute bottom-4 right-4 z-[9993]">
+        <Badge className="bg-gray-900/90 backdrop-blur-lg border border-gray-700/50 text-gray-100 p-2 shadow-2xl text-xs">
+          <Clock className="h-3 w-3 mr-1" />
+          {new Date().toLocaleTimeString()}
+        </Badge>
       </div>
     </div>
   );

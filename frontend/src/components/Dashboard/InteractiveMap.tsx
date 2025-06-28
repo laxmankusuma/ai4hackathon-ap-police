@@ -28,7 +28,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   showHeatmap
 }) => {
   const getIncidentColor = (type: string) => {
-      const colors = {
+    const colors = {
       "Body Offence": "red",              // violent, high-alert
       "Robbery": "purple",                // stealthy, criminal
       "Offence Against Women": "blue",    // empathy, serious
@@ -36,7 +36,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       "Disaster": "brown",                // earthy, severe
       "Missing": "maroon",                // emotional, alert
       "Offence Against Public": "yellow"  // general public caution
-  };
+    };
     return colors[type as keyof typeof colors] || "#6b7280";
   };
 
@@ -70,15 +70,15 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       </style>`,
       className: 'custom-marker',
       iconSize: [size, size],
-      iconAnchor: [size/2, size/2]
+      iconAnchor: [size / 2, size / 2]
     });
   };
 
   return (
     <div className="h-[700px] w-full rounded-xl overflow-hidden border-2 border-gray-200 dark:border-gray-700">
-      <MapContainer 
-        center={AP_CENTER} 
-        zoom={7} 
+      <MapContainer
+        center={AP_CENTER}
+        zoom={7}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
       >
@@ -86,7 +86,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        
+
         {/* Crime Incidents */}
         {filteredIncidents.map((incident) => (
           <React.Fragment key={incident.id}>
