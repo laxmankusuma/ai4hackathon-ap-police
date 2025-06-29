@@ -199,14 +199,6 @@ export const MainHome: React.FC<MainHomeProps> = ({ onEnterDashboard }) => {
                 <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-1 transition-transform duration-300" />
               </Button>
 
-              <Button
-                variant="outline"
-                size="lg"
-                className="px-12 py-6 text-xl rounded-full border-2 border-gray-300 hover:border-blue-500 hover:bg-white dark:hover:bg-gray-800 transition-all duration-500 hover:scale-105 group shadow-lg hover:shadow-xl"
-              >
-                <Play className="mr-3 h-6 w-6 group-hover:scale-110 transition-transform duration-300" />
-                Watch Demo
-              </Button>
             </div>
 
             {/* Trust Indicators */}

@@ -32,7 +32,7 @@ Path(tmp_file_dir).mkdir(parents=True, exist_ok=True)
 # Load Whisper model
 model = faster_whisper.WhisperModel("large-v3")
 
-DB_HOST = "localhost"
+DB_HOST = "164.52.193.70"
 DB_USER = "aiuser"
 DB_PASSWORD = "Ptpl!234"
 DB_NAME = "aihackathon"

@@ -59,15 +59,6 @@ logger = logging.getLogger("uvicorn")
 executor = ThreadPoolExecutor(max_workers=4)
 
 vad_model = load_silero_vad()
-os.environ["OPENAI_API_KEY"] = "llm-key"
-LLM_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
-
-
-openai_api_base = "http://164.52.196.228:8020/v1"
-
-chat = OpenAI(
-    base_url=openai_api_base,
-)
 
 # Recording configuration
 RECORDINGS_DIR = "recordings"
@@ -336,35 +327,38 @@ async def query_llm(prompt: str, caller_number: str = None) -> str:
     """Async LLM query using OpenAI client with caller number as session_id"""
     try:
         system_prompt = """
-        You are a calm, professional, and efficient Dial 112 emergency voice agent.
+       You are a calm, professional, and efficient Dial 112 emergency voice assistant.
 
-        Speak only **one sentence at a time** — short, clear, and helpful.
-
-        Your job is to collect three things quickly:
+        Your goal is to collect **three key details** quickly, one sentence at a time:
 
         1. Name  
-        2. Type of emergency (in short)  
-        3. Location (confirm using Google Maps)
+        2. Type of emergency (brief)  
+        3. Location (verify via Google Maps)
 
-        Always start with:  
+        🟢 Always begin the call with:  
         "Please stay calm. I'm here to help you."
 
-        Ask questions one at a time:
+        🔹 Ask only **one short question at a time**, and keep every response brief and clear.  
+        🔹 Do **not** use full addresses or pincodes — just use clean location names (e.g., "HITEC City, Hyderabad").  
+        🔹 Never include extra information, small talk, or long sentences.
 
-        - "What's your name?"  
-        - "What happened?"  
-        - "Where are you right now?"
+        ### Order of questions:
+        1. "What's your name?"  
+        2. "What happened?"  
+        3. "Where are you right now?"
 
-        If they mention a place, use Google Maps to get top 3 results.
+        ### If they mention a place:
+        - Use Google Maps to find the top 3 matches.
+        - Then say:  
+        **"I found a few matches. Please tell me which one is right."**  
+        (List them clearly, one by one, without pincodes.)
 
-        Then say:  
-        "I found a few places. Tell me which is right."  
-        (List them one by one, clearly.)
+        ### Once confirmed:
+        - Say:  
+        **"Thank you. Help is coming. Stay where you are and stay safe."**
 
-        Once confirmed, say:  
-        "Thank you. Help is coming. Stay where you are and stay safe."
+        💡 **Never say more than one sentence at a time. Never ask multiple things together.**
 
-        Never say more than one sentence at a time. No small talk.
         """
 
         # Use caller number as session_id, fallback to default if not available
@@ -372,7 +366,7 @@ async def query_llm(prompt: str, caller_number: str = None) -> str:
         session_name = f"Emergency Call from {caller_number}" if caller_number else "Emergency Call Handler"
 
         agent = Agent(
-            model=Ollama(id="qwen2.5:32b", host="http://164.52.196.116:11434"),
+            model=Ollama(id="qwen2.5:32b", host="http://164.52.193.70:11434"),
             
             # Agent identification and metadata
             name="Emergency_Services_AI_Agent",
@@ -444,7 +438,7 @@ async def synthesize_speech(text: str, call_state: CallState = None):
         voice = "en-US-AriaNeural"  # Changed voice - Aria is clearer than Jenny
         
         # Use plain text instead of SSML to avoid XML being read aloud
-        communicate = edge_tts.Communicate(text, voice, rate="+5%", volume="+0%") # Slower rate, normal volume
+        communicate = edge_tts.Communicate(text, voice, rate="+15%", volume="+0%") # Slower rate, normal volume
         await communicate.save(output_file)
         
         # Load and process audio with minimal changes
@@ -485,52 +479,6 @@ async def synthesize_speech(text: str, call_state: CallState = None):
     except Exception as e:
         logger.error(f"EdgeTTS error: {e}")
         return None
-
-# @app.api_route("/incoming-call", methods=["GET", "POST"])
-# async def handle_incoming_call(request: Request):
-#     logger.info("Received incoming call request from: %s", request.client.host)
-    
-#     try:
-#         # Log the request details for debugging
-#         form_data = await request.form()
-#         logger.info(f"Call from: {form_data.get('From', 'Unknown')}")
-#         logger.info(f"Call to: {form_data.get('To', 'Unknown')}")
-#         logger.info(f"Call SID: {form_data.get('CallSid', 'Unknown')}")
-        
-#         response = VoiceResponse()
-        
-#         # Use your ngrok URL instead of direct server IP
-#         ngrok_host = "bream-cool-hornet.ngrok-free.app"  # Your ngrok URL
-        
-#         connect = Connect()
-#         connect.stream(url=f'wss://{ngrok_host}/media-stream')  # Use wss:// with ngrok
-#         response.append(connect)
-        
-#         # Convert TwiML to string
-#         twiml_str = str(response)
-#         logger.info(f"Generated TwiML: {twiml_str}")
-        
-#         # Return as XML response with proper content type
-#         return Response(
-#             content=twiml_str,
-#             media_type="application/xml",
-#             status_code=200
-#         )
-        
-#     except Exception as e:
-#         logger.error(f"Error in handle_incoming_call: {e}")
-        
-#         # Return a fallback TwiML response
-#         fallback_twiml = '''<?xml version="1.0" encoding="UTF-8"?>
-#         <Response>
-#             <Say voice="alice">Sorry, there was an error connecting your call. Please try again.</Say>
-#         </Response>'''
-        
-#         return Response(
-#             content=fallback_twiml,
-#             media_type="application/xml",
-#             status_code=200
-#         )
     
 @app.api_route("/incoming-call", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
@@ -677,7 +625,7 @@ async def handle_media_stream(websocket: WebSocket):
                         # Process any remaining audio
                         if call_state.is_recording and len(call_state.speech_buffer) > 800:
                             logger.info("🔄 Processing remaining speech buffer...")
-                            await process_speech_buffer_improved(call_state, websocket, stream_sid)
+                            # await process_speech_buffer_improved(call_state, websocket, stream_sid)
                         
                         conversation_data = await call_state.save_conversation_log()
                         logger.info(f"📞 Call completed. Total entries: {len(call_state.conversation_log)}")
@@ -879,7 +827,6 @@ async def process_audio_chunk(call_state: CallState, websocket: WebSocket, strea
             energy_db = -80
         
         current_time = time.time()
-        print("energy_db",energy_db)
         # Adjusted thresholds for better detection
         energy_threshold = energy_db > -45    # Better threshold for phone audio
         rms_threshold = rms > 500            # Adjusted for lookup table values
