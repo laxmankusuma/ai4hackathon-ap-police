@@ -1,7 +1,7 @@
 // src/services/incidentService.ts
 import { ProcessedIncident } from '@/types/incident';
 
-const API_BASE_URL = 'http://164.52.196.116:8000';
+const API_BASE_URL = 'http://164.52.193.70:8000';
 
 export const fetchIncidents = async (): Promise<ProcessedIncident[]> => {
   try {

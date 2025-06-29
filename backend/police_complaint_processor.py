@@ -90,7 +90,7 @@ class PoliceComplaintProcessor:
 
         If none match, return: Uncategorized
 
-        Give only the classification result, nothing else.
+        Give only the classification result accuractly, nothing else.
         """
         
         messages = [
@@ -489,7 +489,7 @@ class PoliceComplaintProcessor:
 # Configuration constants
 DEFAULT_GOOGLE_API_KEY = "AIzaSyDWT0N7pHNSf-SQ5ueYHwrWWuA3_aec580"
 DEFAULT_DB_CONFIG = {
-    'host': '164.52.196.116',
+    'host': '164.52.193.70',
     'database': 'aihackathon',
     'user': 'aiuser',
     'password': 'Ptpl!234'

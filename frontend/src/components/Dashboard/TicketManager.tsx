@@ -32,7 +32,7 @@ export const TicketManager = () => {
   const [filterDistrict, setFilterDistrict] = useState("all");
 
   // API endpoint - replace with your actual endpoint URL
-  const API_ENDPOINT = 'http://localhost:8000/incident_reports';
+  const API_ENDPOINT = 'http://164.52.193.70:8000/incident_reports';
 
   // Fetch data from API
   const fetchIncidents = async () => {

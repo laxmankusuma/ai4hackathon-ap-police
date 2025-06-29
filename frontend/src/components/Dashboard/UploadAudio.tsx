@@ -114,7 +114,7 @@ export const UploadAudio = () => {
         });
       }, 200);
 
-      const response = await fetch('http://164.52.196.116:8000/transcribe', {
+      const response = await fetch('http://164.52.193.70:8000/transcribe', {
         method: 'POST',
         body: formData,
       });
@@ -297,10 +297,10 @@ export const UploadAudio = () => {
                       <Clock className="h-5 w-5 text-gray-400" />
                     )}
                     <span className={`text-sm ${stage.status === 'completed'
-                        ? 'text-green-600'
-                        : stage.status === 'processing'
-                          ? 'text-blue-600'
-                          : 'text-gray-600'
+                      ? 'text-green-600'
+                      : stage.status === 'processing'
+                        ? 'text-blue-600'
+                        : 'text-gray-600'
                       }`}>
                       {stage.name}
                     </span>

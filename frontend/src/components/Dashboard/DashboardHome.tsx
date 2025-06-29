@@ -34,7 +34,7 @@ import {
   RadialBar
 } from 'recharts';
 
-const API_BASE_URL = 'http://164.52.196.116:8000'; // Adjust this to your API URL
+const API_BASE_URL = 'http://164.52.193.70:8000'; // Adjust this to your API URL
 
 export const DashboardHome = () => {
   const [totalIncidents, setTotalIncidents] = useState(0);
@@ -288,7 +288,7 @@ export const DashboardHome = () => {
                       <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">
                         {stat.title}
                       </p>
-                      <p className="text-3xl font-bold text-gray-900 mb-2">
+                      <p className="text-2xl font-bold text-gray-900 mb-2">
                         {stat.value}
                       </p>
                       <p className="text-sm text-gray-600">

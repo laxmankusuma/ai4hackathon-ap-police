@@ -1,3 +1,5 @@
 __pycache__
 mysql_data/
 venv/
+recordings/
+session/
